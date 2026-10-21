@@ -11,7 +11,7 @@ Tienda online para la óptica de la familia. Objetivo: llevar la óptica al merc
 
 ## Referencias de diseño
 
-La web se basa en estas dos páginas (bloquean descargas automáticas; usar las capturas en [referencias/](referencias/)):
+La web se basa en estas dos páginas (bloquean descargas automáticas; usar las capturas en [referencias/](referencias/), que están solo en la compu local: no se suben al repo público porque son imágenes de sitios de terceros):
 
 - https://www.warbyparker.com/sunglasses — estética general y catálogo
 - https://www.lenscrafters.com/lc-us/virtual-try-on — navegación y probador virtual
@@ -52,6 +52,21 @@ Producto → variantes de color (cada una con fotos y modelo 3D para el probador
 - El botón "Probar" sigue mostrándose solo si la variante tiene `tryOnModelUrl`, aunque el probador 2D funciona con cualquier producto que tenga medidas.
 - Lugares reservados (rutas a `PendingView`): `/producto/:slug/lentes` (paso "Elegir lentes"), cuenta, búsqueda, favoritos, carrito y secciones del menú.
 - Favoritos en Pinia + localStorage ([src/stores/favorites.ts](src/stores/favorites.ts)).
+
+## Publicación
+
+- **Primera versión online (2026-10-21):** https://luminers.github.io/OpticaNunez/ — repo público https://github.com/luminers/OpticaNunez (rama `main`). Incluye home, catálogo, ficha, probador y lectura del catálogo desde Supabase.
+- Cada push a `main` publica solo: [.github/workflows/deploy.yml](.github/workflows/deploy.yml) (Node 24, `npm ci`, type-check, `npm run build:pages`). GitHub Pages está configurado con Source = GitHub Actions.
+- El sitio vive en la subcarpeta `/OpticaNunez/` (`base` en [vite.config.ts](vite.config.ts) con `--mode pages`). Toda URL de archivo propio debe armarse con `import.meta.env.BASE_URL`, nunca con `/` absoluto; las rutas del router ya lo respetan. `build:pages` copia `index.html` a `404.html` para que funcionen los links directos.
+- La URL y la publishable key de Supabase están en el workflow (son públicas por diseño). Nunca subir `.env.local`, `.mcp.json`, claves `sb_secret_`/service role ni `referencias/`.
+- Commits de este repo firmados como `Joaquín <76037559+luminers@users.noreply.github.com>` (config local del repo) para no exponer correos personales.
+- `npm run dev:celular`: https con certificado propio en la red local (puerto 5180) para probar la cámara desde el teléfono.
+
+## Cómo seguir (una conversación por funcionalidad)
+
+- Arrancar leyendo este archivo; revisar "Pendientes" y "Lugares reservados".
+- Antes de cerrar una funcionalidad: `npm run type-check`, `npm run lint`, probar en celular (hasta 280 px) y escritorio, y actualizar la sección **Estado** de este archivo.
+- Próximos pasos naturales: paso "Elegir lentes" (`/producto/:slug/lentes`: tipo de lente → graduación/receta), carrito y pago con Mercado Pago (Edge Functions), panel de administración para cargar productos y fotos, calibración del probador con el pupilómetro, decidir si "Probar" aparece en todos los productos.
 
 ## Sistema visual
 
