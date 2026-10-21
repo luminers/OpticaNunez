@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 5 570 140" role="img" aria-labelledby="t">
+  <title id="t">Óptica Nuñez</title>
+  <defs>
+    <linearGradient id="anillo" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A3C9E"/>
+      <stop offset=".55" stop-color="#2F6CC4"/>
+      <stop offset="1" stop-color="#5BA3E3"/>
+    </linearGradient>
+
+    <!-- Letras dibujadas como trazos (no dependen de fuentes instaladas) -->
+    <g id="optica" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M41,31 L53,20"/>
+      <path d="M38,40 H50 A18 18 0 0 1 68,58 V82 A18 18 0 0 1 50,100 H38 A18 18 0 0 1 20,82 V58 A18 18 0 0 1 38,40 Z"/>
+      <path d="M84,118 V58 H106 A14 14 0 0 1 120,72 V86 A14 14 0 0 1 106,100 H84"/>
+      <path d="M136,44 V88 A12 12 0 0 0 148,100 H152 M128,58 H152"/>
+      <path d="M166,58 V100 M166,44 v0"/>
+      <path d="M218,58 H196 A14 14 0 0 0 182,72 V86 A14 14 0 0 0 196,100 H218"/>
+      <path d="M270,58 H248 A14 14 0 0 0 234,72 V86 A14 14 0 0 0 248,100 H270 V58"/>
+    </g>
+    <g id="nunez" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M290,100 V40 L334,100 V40"/>
+      <path d="M352,58 V86 A14 14 0 0 0 366,100 H388 V58"/>
+      <path d="M406,100 V58 H428 A14 14 0 0 1 442,72 V100 M408,46 C412,40 418,40 424,44 S436,48 440,42"/>
+      <path d="M460,80 H496 V72 A14 14 0 0 0 482,58 H474 A14 14 0 0 0 460,72 V86 A14 14 0 0 0 474,100 H494"/>
+      <path d="M512,58 H548 L512,100 H548"/>
+    </g>
+  </defs>
+
+  <!-- Anillo tipo lente, inclinado detrás de "caN": fino arriba a la izquierda, grueso abajo a la derecha -->
+  <path transform="rotate(25 262 74)" fill="url(#anillo)" fill-rule="evenodd"
+        d="M216,74 a46,64 0 1,0 92,0 a46,64 0 1,0 -92,0 Z
+           M220,68 a34,52 0 1,0 68,0 a34,52 0 1,0 -68,0 Z"/>
+
+  <!-- Halo blanco para que las letras se lean sobre el anillo -->
+  <use xlink:href="#optica" href="#optica" stroke="#fff" stroke-width="12"/>
+  <use xlink:href="#nunez" href="#nunez" stroke="#fff" stroke-width="13"/>
+
+  <!-- "Optica": celeste contorneado -->
+  <use xlink:href="#optica" href="#optica" stroke="#2768B8" stroke-width="6.5"/>
+  <use xlink:href="#optica" href="#optica" stroke="#9CC6EC" stroke-width="2.4"/>
+
+  <!-- "Nuñez": azul marino macizo -->
+  <use xlink:href="#nunez" href="#nunez" stroke="#2A2E48" stroke-width="7.5"/>
+</svg>
