@@ -6,7 +6,8 @@ import ColorSwatches from '@/components/catalog/ColorSwatches.vue'
 import FrameIllustration from '@/components/catalog/FrameIllustration.vue'
 import { WIDTH_LABELS } from '@/data/catalog-labels'
 import { getCatalog, getProduct } from '@/services/catalog'
-import { drawGlasses, type GlassesStyle } from '@/tryon/drawGlasses'
+import { drawGlasses, drawMeasureOverlay, type GlassesStyle } from '@/tryon/drawGlasses'
+import type { TryOn3D } from '@/tryon/three/TryOn3D'
 import {
   computePose,
   irisAxes,
@@ -175,6 +176,7 @@ async function startCamera() {
   if (!window.isSecureContext) return fail('insecure')
   if (!navigator.mediaDevices?.getUserMedia) return fail('unsupported')
   phase.value = 'starting'
+  if (draw3d) ensureEngine3d()
 
   // El modelo se empieza a descargar mientras la persona responde el permiso.
   const landmarkerReady = landmarker.value
@@ -203,6 +205,7 @@ async function startCamera() {
   await video.play()
   phase.value = 'running'
   smoother.reset()
+  engine3d?.reset()
   frameRequest = requestAnimationFrame(renderFrame)
 }
 
@@ -220,7 +223,42 @@ function stopCamera() {
 onBeforeUnmount(() => {
   stopCamera()
   landmarker.value?.close()
+  unmounted = true
+  engine3d?.dispose()
 })
+
+// Armazón 3D (en evaluación): por ahora solo en estos modelos. `?motor=2d` o `?motor=3d`
+// fuerza uno u otro para comparar. Three.js se descarga recién al activar la cámara, y si el
+// dispositivo no tiene WebGL se sigue con el dibujo 2D.
+const TRYON_3D_SLUGS = new Set(['palermo'])
+const use3d = computed(
+  () =>
+    route.query.motor === '3d' || (route.query.motor !== '2d' && TRYON_3D_SLUGS.has(props.slug)),
+)
+let draw3d = false
+let engine3d: TryOn3D | null = null
+let engine3dLoading: Promise<void> | null = null
+let unmounted = false
+
+function ensureEngine3d() {
+  if (engine3d || engine3dLoading) return
+  engine3dLoading = import('@/tryon/three/TryOn3D')
+    .then(({ TryOn3D }) => {
+      const engine = new TryOn3D()
+      if (unmounted) engine.dispose()
+      else engine3d = engine
+    })
+    .catch((error) => console.warn('[probador] Sin armazón 3D, se usa el dibujo 2D', error))
+}
+
+watch(
+  use3d,
+  (on) => {
+    draw3d = on
+    if (on && phase.value !== 'intro') ensureEngine3d()
+  },
+  { immediate: true },
+)
 
 // Bucle por cuadro: detección + dibujo. El estado reactivo se actualiza unas 4 veces por segundo.
 const smoother = new PoseSmoother()
@@ -251,15 +289,19 @@ function renderFrame(now: number) {
     const result = detector.detectForVideo(video, now)
     const landmarks = result.faceLandmarks[0]
     if (landmarks) {
-      pose = smoother.update(computePose(landmarks, w, h, true))
+      const matrix = result.facialTransformationMatrixes?.[0]?.data
+      pose = smoother.update(computePose(landmarks, w, h, true, matrix), now)
+      if (matrix) engine3d?.track(matrix, now)
       lastFaceAt = now
       if (debug && now - lastDebugLog > 1000) {
         lastDebugLog = now
-        console.info('[probador]', JSON.stringify({ iris: irisAxes(landmarks, w, h), pose }))
+        const motor = draw3d && engine3d ? '3d' : '2d'
+        console.info('[probador]', JSON.stringify({ motor, iris: irisAxes(landmarks, w, h), pose }))
       }
     } else if (now - lastFaceAt > 400) {
       pose = null
       smoother.reset()
+      engine3d?.reset()
     }
   }
 
@@ -269,8 +311,18 @@ function renderFrame(now: number) {
   ctx.scale(-1, 1)
   ctx.drawImage(video, 0, 0, w, h)
   ctx.restore()
-  if (pose && glassesStyle)
-    drawGlasses(ctx, pose, glassesStyle, { showMeasures: showMeasures.value })
+  if (pose && glassesStyle) {
+    if (draw3d && engine3d) engine3d.setStyle(glassesStyle)
+    if (draw3d && engine3d?.render(pose, w, h)) {
+      // El 3D se calcula sin espejar: se espeja igual que el video.
+      ctx.save()
+      ctx.translate(w, 0)
+      ctx.scale(-1, 1)
+      ctx.drawImage(engine3d.canvas, 0, 0, w, h)
+      ctx.restore()
+      if (showMeasures.value) drawMeasureOverlay(ctx, pose, glassesStyle.size)
+    } else drawGlasses(ctx, pose, glassesStyle, { showMeasures: showMeasures.value })
+  }
 
   if (now - lastUiUpdate > 250) {
     lastUiUpdate = now

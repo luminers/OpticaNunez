@@ -4,19 +4,23 @@ import { frameTotalWidthMm, type FacePose } from './pose'
 
 // Dibuja el frente del armazón sobre la cara, en milímetros reales.
 // Sistema de trabajo: origen entre las pupilas, x hacia la derecha, y hacia abajo, 1 unidad = 1 mm.
+// El motor 3D (tryon/three) usa las mismas medidas y constantes.
 
 export interface GlassesStyle {
   shape: FrameShape
   material: FrameMaterial
   frameColor: string
   lensTint?: string
-  size: Pick<ProductSize, 'lensWidth' | 'bridge' | 'lensHeight'>
+  size: Pick<ProductSize, 'lensWidth' | 'bridge' | 'lensHeight' | 'templeLength'>
 }
 
-const RIM_MM: Record<FrameMaterial, number> = { acetato: 4.2, metal: 1.3 }
+export const RIM_MM: Record<FrameMaterial, number> = { acetato: 4.2, metal: 1.3 }
 // En un armazón bien puesto la pupila queda un poco por encima del centro del lente.
-const PUPIL_ABOVE_LENS_CENTER = 0.08
-const TEMPLE_STUB_MM = 5
+export const PUPIL_ABOVE_LENS_CENTER = 0.08
+export const TEMPLE_STUB_MM = 5
+// El frente del armazón queda unos 15 mm por delante de las pupilas: al girar o cabecear
+// se corre hacia donde apunta la nariz.
+export const FRAME_AHEAD_OF_PUPILS_MM = 15
 // Tamaño de la muestra de carey en unidades del viewBox (≈ 25 mm en un lente de 52).
 const CAREY_TILE = 36
 const CAREY_TILE_PX = 128
@@ -26,8 +30,9 @@ let careyTile: HTMLCanvasElement | null = null
 /**
  * Carey: manchas irregulares de miel, ámbar y marrón oscuro sobre fondo tostado.
  * Se genera una vez con semilla fija para que el patrón no cambie entre cuadros.
+ * La muestra empalma sin cortes, así que sirve también como textura repetida.
  */
-function careyPattern(ctx: CanvasRenderingContext2D, unitsPerTile: number) {
+export function careyCanvas(): HTMLCanvasElement {
   if (!careyTile) {
     careyTile = document.createElement('canvas')
     careyTile.width = CAREY_TILE_PX
@@ -55,7 +60,11 @@ function careyPattern(ctx: CanvasRenderingContext2D, unitsPerTile: number) {
         }
     }
   }
-  const pattern = ctx.createPattern(careyTile, 'repeat')!
+  return careyTile
+}
+
+function careyPattern(ctx: CanvasRenderingContext2D, unitsPerTile: number) {
+  const pattern = ctx.createPattern(careyCanvas(), 'repeat')!
   pattern.setTransform(new DOMMatrix().scale(unitsPerTile / CAREY_TILE_PX))
   return pattern
 }
@@ -65,9 +74,33 @@ function strokeStyle(ctx: CanvasRenderingContext2D, color: string, unitsPerTile:
 }
 
 /** Primer punto de un path "M x y ..." del dibujo. */
-function startPoint(path: string): [number, number] {
+export function startPoint(path: string): [number, number] {
   const [, x, y] = path.match(/M\s*([\d.]+)\s+([\d.]+)/) ?? []
   return [Number(x), Number(y)]
+}
+
+/** Lleva el contexto al plano del frente del armazón: origen entre las pupilas, en mm. */
+function faceTransform(ctx: CanvasRenderingContext2D, pose: FacePose) {
+  ctx.translate(pose.center.x, pose.center.y)
+  ctx.rotate(pose.roll)
+  ctx.translate(
+    Math.sin(pose.yaw) * FRAME_AHEAD_OF_PUPILS_MM * pose.pxPerMm,
+    -Math.sin(pose.pitch) * FRAME_AHEAD_OF_PUPILS_MM * pose.pxPerMm,
+  )
+  // Al girar la cabeza el frente se ve más angosto; al cabecear, más bajo.
+  ctx.scale(pose.pxPerMm * Math.cos(pose.yaw), pose.pxPerMm * Math.cos(pose.pitch))
+}
+
+/** Solo la cota del ancho total, para dibujarla encima del armazón 3D. */
+export function drawMeasureOverlay(
+  ctx: CanvasRenderingContext2D,
+  pose: FacePose,
+  size: GlassesStyle['size'],
+) {
+  ctx.save()
+  faceTransform(ctx, pose)
+  drawMeasures(ctx, size, size.lensHeight * PUPIL_ABOVE_LENS_CENTER)
+  ctx.restore()
 }
 
 export function drawGlasses(
@@ -90,10 +123,7 @@ export function drawGlasses(
   })
 
   ctx.save()
-  ctx.translate(pose.center.x, pose.center.y)
-  ctx.rotate(pose.roll)
-  // Al girar la cabeza el frente se ve más angosto.
-  ctx.scale(pose.pxPerMm * Math.cos(pose.yaw), pose.pxPerMm)
+  faceTransform(ctx, pose)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 

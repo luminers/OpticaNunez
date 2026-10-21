@@ -22,6 +22,8 @@ export async function createFaceLandmarker(): Promise<FaceLandmarker> {
     baseOptions: { modelAssetPath: MODEL_URL, delegate },
     runningMode: 'VIDEO' as const,
     numFaces: 1,
+    // Matriz de la cabeza (rotación y posición en 3D): da el giro y el cabeceo reales.
+    outputFacialTransformationMatrixes: true,
     minFaceDetectionConfidence: 0.6,
     minFacePresenceConfidence: 0.6,
     minTrackingConfidence: 0.6,

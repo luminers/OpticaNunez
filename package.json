@@ -20,12 +20,14 @@
     "@mediapipe/tasks-vision": "1.0.1",
     "@supabase/supabase-js": "^2.118.0",
     "pinia": "^4.0.3",
+    "three": "0.186.1",
     "vue": "^3.5.42",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.5",
     "@types/node": "^24.13.4",
+    "@types/three": "0.186.0",
     "@vitejs/plugin-basic-ssl": "2.3.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/eslint-config-typescript": "^14.9.0",
