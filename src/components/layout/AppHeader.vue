@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { STORE_INFO, storeField, todayStatus, whatsappUrl } from '@/data/store-info'
 import { useFavoritesStore } from '@/stores/favorites'
 
 const favorites = useFavoritesStore()
@@ -15,13 +16,19 @@ const resizeObserver = new ResizeObserver(([entry]) => {
 onMounted(() => headerEl.value && resizeObserver.observe(headerEl.value))
 onBeforeUnmount(() => resizeObserver.disconnect())
 
+// Barra del local: dirección, si está abierto hoy y WhatsApp. Sin datos cargados no se muestra.
+const address = storeField(
+  STORE_INFO.street && STORE_INFO.city ? `${STORE_INFO.street}, ${STORE_INFO.city}` : null,
+)
+const status = todayStatus() ?? storeField(null)
+const whatsapp = whatsappUrl() ?? (import.meta.env.DEV ? '#' : null)
+const showStoreBar = Boolean(address || status || whatsapp)
+
 // Las secciones sin vista todavía caen en la página "en construcción".
 const NAV_LINKS = [
   { label: 'Recetados', to: '/anteojos-recetados' },
   { label: 'Sol', to: '/anteojos-de-sol' },
-  { label: 'Lentes de contacto', to: '/lentes-de-contacto' },
   { label: 'Marcas', to: '/marcas' },
-  { label: 'Examen visual', to: '/turnos' },
   { label: 'Obras sociales', to: '/obras-sociales' },
   { label: 'Promociones', to: '/promociones' },
 ]
@@ -29,6 +36,27 @@ const NAV_LINKS = [
 
 <template>
   <header ref="headerEl" class="header">
+    <div v-if="showStoreBar" class="store-bar">
+      <component
+        :is="STORE_INFO.mapsUrl ? 'a' : 'span'"
+        v-if="address"
+        :href="STORE_INFO.mapsUrl ?? undefined"
+        class="store-address"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" />
+          <circle cx="12" cy="10" r="2.3" />
+        </svg>
+        <span class="store-address-text">Local en {{ address }}</span>
+      </component>
+      <span v-if="status" class="store-status" :class="{ open: status.startsWith('Abierto') }">{{
+        status
+      }}</span>
+      <a v-if="whatsapp" :href="whatsapp" class="store-whatsapp" target="_blank" rel="noopener"
+        ><span class="store-whatsapp-long">Escribinos por </span>WhatsApp</a
+      >
+    </div>
+
     <div class="bar">
       <RouterLink to="/" class="logo">
         <img src="@/assets/logo-optica-nunez.svg" alt="Óptica Nuñez" />
@@ -90,6 +118,65 @@ const NAV_LINKS = [
   padding: 0 var(--gutter);
   background: var(--color-paper);
   border-bottom: 1px solid var(--color-line);
+}
+
+.store-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px 24px;
+  margin: 0 calc(var(--gutter) * -1);
+  padding: 7px var(--gutter);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: var(--step--1);
+}
+
+.store-bar a {
+  text-decoration: none;
+}
+
+.store-bar a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.store-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.store-address-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-bar svg {
+  width: 15px;
+  height: 15px;
+}
+
+.store-status {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.store-status.open::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #9cc6ec;
+  vertical-align: 1px;
+}
+
+.store-whatsapp {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .bar {
@@ -195,6 +282,22 @@ svg {
 }
 
 @media (max-width: 599px) {
+  .store-address {
+    display: none;
+  }
+
+  .store-status {
+    margin-left: 0;
+  }
+
+  .store-whatsapp {
+    margin-left: auto;
+  }
+
+  .store-whatsapp-long {
+    display: none;
+  }
+
   .bar {
     gap: 8px;
   }

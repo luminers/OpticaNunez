@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { FRAME_GEOMETRY } from '@/data/frame-geometry'
-import type { FrameMaterial, FrameShape } from '@/types/catalog'
+import { geometryFor } from '@/data/frame-geometry'
+import type { FrameMaterial, FrameModel, FrameShape } from '@/types/catalog'
 
 // Dibujo del armazón mientras no haya fotos reales.
 // Frente y medidas: se dibuja la mitad izquierda (viewBox 240×104) y se espeja.
@@ -11,6 +11,8 @@ export type FrameView = 'frente' | 'medidas' | 'perfil'
 const props = withDefaults(
   defineProps<{
     shape: FrameShape
+    /** Réplica medida del armazón real: se dibuja su silueta en lugar de la forma genérica. */
+    frame?: FrameModel
     material: FrameMaterial
     frameColor: string
     lensTint?: string
@@ -18,14 +20,14 @@ const props = withDefaults(
     /** Requerido en la vista de medidas, en milímetros. */
     measures?: { lensWidth: number; bridge: number }
   }>(),
-  { view: 'frente', lensTint: undefined, measures: undefined },
+  { view: 'frente', frame: undefined, lensTint: undefined, measures: undefined },
 )
 
 const uid = useId()
 const careyId = `carey-${uid}`
 const clipId = `lens-${uid}`
 
-const geometry = computed(() => FRAME_GEOMETRY[props.shape])
+const geometry = computed(() => geometryFor(props))
 const stroke = computed(() =>
   props.frameColor === 'carey' ? `url(#${careyId})` : props.frameColor,
 )
@@ -52,7 +54,7 @@ const showMeasures = computed(() => props.view === 'medidas' && props.measures)
       </clipPath>
     </defs>
 
-    <ellipse cx="120" cy="98" rx="92" ry="3" fill="#1d2b2a" opacity="0.07" />
+    <ellipse cx="120" cy="98" rx="92" ry="3" fill="#2a2e48" opacity="0.07" />
 
     <template v-if="view === 'perfil'">
       <path
@@ -87,7 +89,9 @@ const showMeasures = computed(() => props.view === 'medidas' && props.measures)
           fill="#ffffff"
           opacity="0.18"
         />
+        <path v-if="geometry.front" :d="geometry.front" :fill="stroke" fill-rule="evenodd" />
         <g
+          v-else
           fill="none"
           :stroke="stroke"
           :stroke-width="strokeWidth"

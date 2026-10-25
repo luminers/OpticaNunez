@@ -68,6 +68,6 @@ function swatchBackground(variant: ProductVariant) {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(29 43 42 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(42 46 72 / 0.18);
 }
 </style>

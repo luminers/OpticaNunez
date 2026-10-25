@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import { FILTER_GROUPS } from '@/data/catalog-labels'
+import { canTryOn } from '@/data/try-on'
 import type { Badge, FilterKey, Product, SortKey } from '@/types/catalog'
 
 const FILTER_KEYS = FILTER_GROUPS.map((group) => group.key)
@@ -8,7 +9,7 @@ const FILTER_KEYS = FILTER_GROUPS.map((group) => group.key)
 // Dentro de un grupo las opciones se suman (OR); entre grupos se combinan (AND).
 const MATCHERS: Record<FilterKey, (product: Product, value: string) => boolean> = {
   destacado: (p, v) =>
-    v === 'probador' ? p.variants.some((x) => x.tryOnModelUrl) : p.badges.includes(v as Badge),
+    v === 'probador' ? p.variants.some((x) => canTryOn(p, x)) : p.badges.includes(v as Badge),
   genero: (p, v) => p.gender === v || p.gender === 'unisex',
   forma: (p, v) => p.shape === v,
   material: (p, v) => p.material === v,

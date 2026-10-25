@@ -1,5 +1,11 @@
-import { FRAME_GEOMETRY } from '@/data/frame-geometry'
-import type { FrameMaterial, FrameShape, ProductSize } from '@/types/catalog'
+import { geometryFor } from '@/data/frame-geometry'
+import type {
+  FrameFinish,
+  FrameMaterial,
+  FrameModel,
+  FrameShape,
+  ProductSize,
+} from '@/types/catalog'
 import { frameTotalWidthMm, type FacePose } from './pose'
 
 // Dibuja el frente del armazón sobre la cara, en milímetros reales.
@@ -11,10 +17,13 @@ export interface GlassesStyle {
   material: FrameMaterial
   frameColor: string
   lensTint?: string
-  size: Pick<ProductSize, 'lensWidth' | 'bridge' | 'lensHeight' | 'templeLength'>
+  finish?: FrameFinish
+  /** Réplica medida del armazón real; sin valor se usa la forma genérica. */
+  frame?: FrameModel
+  size: Pick<ProductSize, 'lensWidth' | 'bridge' | 'lensHeight' | 'templeLength' | 'frontWidth'>
 }
 
-export const RIM_MM: Record<FrameMaterial, number> = { acetato: 4.2, metal: 1.3 }
+export const RIM_MM: Record<FrameMaterial, number> = { acetato: 4.2, metal: 1.3, inyectado: 3.6 }
 // En un armazón bien puesto la pupila queda un poco por encima del centro del lente.
 export const PUPIL_ABOVE_LENS_CENTER = 0.08
 export const TEMPLE_STUB_MM = 5
@@ -109,7 +118,7 @@ export function drawGlasses(
   style: GlassesStyle,
   options: { showMeasures?: boolean } = {},
 ) {
-  const g = FRAME_GEOMETRY[style.shape]
+  const g = geometryFor(style)
   const { lensWidth, bridge, lensHeight } = style.size
   const rim = RIM_MM[style.material]
   const lensCenterY = lensHeight * PUPIL_ABOVE_LENS_CENTER
@@ -164,10 +173,20 @@ export function drawGlasses(
     ctx.shadowColor = 'rgba(0, 0, 0, 0.28)'
     ctx.shadowBlur = 6
     ctx.shadowOffsetY = 2
-    ctx.strokeStyle = strokeStyle(ctx, style.frameColor, CAREY_TILE)
-    ctx.lineWidth = rim / ((sx + sy) / 2)
-    ctx.stroke(lens)
+    if (g.front) {
+      // Armazón trazado de una foto: el frente entero, con el lente como agujero.
+      ctx.fillStyle = strokeStyle(ctx, style.frameColor, CAREY_TILE)
+      ctx.fill(new Path2D(g.front), 'evenodd')
+    } else {
+      ctx.strokeStyle = strokeStyle(ctx, style.frameColor, CAREY_TILE)
+      ctx.lineWidth = rim / ((sx + sy) / 2)
+      ctx.stroke(lens)
+    }
     ctx.restore()
+    if (g.front) {
+      ctx.restore()
+      continue
+    }
 
     // Puente (media parte) y lateral con el arranque de la patilla, ya en mm.
     ctx.strokeStyle = strokeStyle(ctx, style.frameColor, CAREY_TILE * ((sx + sy) / 2))

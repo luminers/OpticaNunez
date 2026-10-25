@@ -7,6 +7,7 @@ import type {
   ProductSize,
   ProductVariant,
 } from '@/types/catalog'
+import { MUSGO_FRAME } from './frames/musgo'
 
 // Datos de ejemplo hasta tener el catálogo real en Supabase.
 
@@ -385,10 +386,50 @@ const SEEDS: Seed[] = [
   },
 ]
 
-export const MOCK_PRODUCTS: Product[] = SEEDS.map(({ faceWidth, ...seed }, index) => ({
-  ...seed,
-  id: seed.slug,
-  featuredRank: index,
-  sizes: sizes(seed.shape, seed.material, faceWidth),
-  variants: seed.variants(seed.slug),
-}))
+// Primer armazón real, cargado desde la planilla de carga (medidas y fotos técnicas).
+const MUSGO: Product = {
+  id: 'musgo',
+  slug: 'musgo',
+  name: 'Musgo',
+  category: 'recetados',
+  price: 50000,
+  shape: 'cuadrado',
+  material: 'inyectado',
+  gender: 'unisex',
+  badges: ['nuevo'],
+  featuredRank: SEEDS.length,
+  createdAt: '2026-10-25',
+  sizes: [
+    {
+      width: 'ancho',
+      lensWidth: 50,
+      bridge: 21,
+      templeLength: 145,
+      lensHeight: 43,
+      frontWidth: 140,
+    },
+  ],
+  frame: MUSGO_FRAME,
+  variants: [
+    {
+      id: 'musgo-verde',
+      colorName: 'Musgo',
+      colorFamily: 'verde',
+      // Medido en la foto de frente (parte iluminada del armazón).
+      frameColor: '#565748',
+      finish: 'mate',
+      images: [],
+    },
+  ],
+}
+
+export const MOCK_PRODUCTS: Product[] = [
+  ...SEEDS.map(({ faceWidth, ...seed }, index) => ({
+    ...seed,
+    id: seed.slug,
+    featuredRank: index,
+    sizes: sizes(seed.shape, seed.material, faceWidth),
+    variants: seed.variants(seed.slug),
+  })),
+  MUSGO,
+]

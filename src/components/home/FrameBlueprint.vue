@@ -44,6 +44,7 @@ const toPercent = (x: number) => `${(x / 240) * 100}%`
     <div class="drawing">
       <FrameIllustration
         :shape="current.product.shape"
+        :frame="current.product.frame"
         :material="current.product.material"
         :frame-color="variant.frameColor"
         :lens-tint="variant.lensTint"
@@ -122,8 +123,8 @@ const toPercent = (x: number) => `${(x / 240) * 100}%`
   border-radius: 14px;
   background-color: var(--color-paper);
   background-image:
-    linear-gradient(rgb(29 43 42 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(29 43 42 / 0.05) 1px, transparent 1px);
+    linear-gradient(rgb(42 46 72 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(42 46 72 / 0.05) 1px, transparent 1px);
   background-size: 18px 18px;
   background-position: center;
 }

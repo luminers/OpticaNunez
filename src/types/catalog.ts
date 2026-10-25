@@ -1,6 +1,9 @@
-export type Category = 'sol' | 'recetados'
 export type FrameShape = 'redondo' | 'cuadrado' | 'rectangular' | 'aviador' | 'ojo-de-gato'
-export type FrameMaterial = 'acetato' | 'metal'
+import type { FrameGeometry } from '@/data/frame-geometry'
+
+export type Category = 'sol' | 'recetados'
+export type FrameMaterial = 'acetato' | 'metal' | 'inyectado'
+export type FrameFinish = 'brillante' | 'semimate' | 'mate'
 export type Gender = 'mujer' | 'hombre' | 'unisex'
 export type FaceWidth = 'angosto' | 'medio' | 'ancho'
 export type Badge = 'nuevo' | 'mas-vendido'
@@ -17,8 +20,10 @@ export interface ProductVariant {
   lensTint?: string
   /** Fotos reales (Supabase Storage). Mientras esté vacío se muestra la ilustración. */
   images: string[]
-  /** Modelo .glb para el probador virtual. Sin valor = la variante no se puede probar. */
+  /** Modelo .glb para el probador virtual. */
   tryOnModelUrl?: string
+  /** Terminación del armazón; sin valor se dibuja brillante. */
+  finish?: FrameFinish
 }
 
 /**
@@ -31,6 +36,22 @@ export interface ProductSize {
   bridge: number
   templeLength: number
   lensHeight: number
+  /** Ancho total del frente medido con calibre (F en la planilla). Sin valor se estima. */
+  frontWidth?: number
+}
+
+/**
+ * Réplica de un armazón real: la forma trazada de su foto de frente
+ * (scripts/trazar-armazon.mjs) y las medidas de calibre que no están grabadas.
+ */
+export interface FrameModel {
+  geometry: FrameGeometry
+  /** Espesor del frente visto de costado (E). */
+  frontDepth: number
+  /** Alto de la patilla junto a la bisagra (H). */
+  templeHeight: number
+  /** Espesor de la patilla. */
+  templeThickness: number
 }
 
 export interface Product {
@@ -44,6 +65,8 @@ export interface Product {
   gender: Gender
   /** Anchos en los que se fabrica, del más angosto al más ancho. Nunca vacío. */
   sizes: ProductSize[]
+  /** Forma y medidas del armazón real; sin valor se usa la forma genérica de `shape`. */
+  frame?: FrameModel
   badges: Badge[]
   featuredRank: number
   createdAt: string

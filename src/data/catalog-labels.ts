@@ -79,6 +79,7 @@ export const FILTER_GROUPS: FilterGroup[] = [
     options: [
       { value: 'acetato', label: 'Acetato' },
       { value: 'metal', label: 'Metal' },
+      { value: 'inyectado', label: 'Inyectado' },
     ],
   },
   {

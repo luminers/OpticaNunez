@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
-import { FRAME_GEOMETRY } from '@/data/frame-geometry'
+import { geometryFor } from '@/data/frame-geometry'
+import type { FrameFinish } from '@/types/catalog'
 import {
   careyCanvas,
   PUPIL_ABOVE_LENS_CENTER,
@@ -10,7 +11,8 @@ import {
   type GlassesStyle,
 } from '../drawGlasses'
 
-// Armazón 3D generado desde las medidas del producto y la forma de frame-geometry.
+// Armazón 3D generado desde las medidas del producto y la forma de frame-geometry (o la
+// trazada de la foto del armazón real, con su espesor y sus patillas medidas).
 // Sistema del armazón: 1 unidad = 1 mm, origen entre las pupilas, x hacia la derecha de la
 // imagen, y hacia arriba, z hacia la cámara. El frente queda en z = 0 y las patillas van
 // hacia -z. El grupo que lo contiene lo corre hacia adelante de los ojos.
@@ -30,6 +32,16 @@ const TEMPLE_DROOP = THREE.MathUtils.degToRad(3)
 const TEMPLE_SECTION: Record<GlassesStyle['material'], { thickness: number; height: number }> = {
   acetato: { thickness: 2.6, height: 5.5 },
   metal: { thickness: 1.2, height: 1.8 },
+  inyectado: { thickness: 2.4, height: 5 },
+}
+/** Brillo del plástico según la terminación: el mate no tiene laca ni reflejo nítido. */
+const FINISH: Record<
+  FrameFinish,
+  { roughness: number; clearcoat: number; clearcoatRoughness: number }
+> = {
+  brillante: { roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.12 },
+  semimate: { roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.45 },
+  mate: { roughness: 0.85, clearcoat: 0, clearcoatRoughness: 1 },
 }
 /** Tamaño de la muestra de carey en mm sobre el armazón. */
 const CAREY_TILE_MM = 25
@@ -86,6 +98,25 @@ function lensContour(svgPath: string, toMm: (x: number, y: number) => THREE.Vect
 
 const mirrorX = (points: THREE.Vector2[]) => points.map((p) => v2(-p.x, p.y)).reverse()
 
+/** Mitad izquierda del frente trazado (con el agujero del lente) en mm, y su espejo. */
+function frontShapes(svgPath: string, toMm: (x: number, y: number) => THREE.Vector2) {
+  const svg = new SVGLoader().parse(
+    `<svg xmlns="http://www.w3.org/2000/svg"><path d="${svgPath}"/></svg>`,
+  )
+  // El primer subtrazo es el contorno; los siguientes, los agujeros (el lente).
+  const [outline, ...holes] = svg.paths[0]!.subPaths.map((sub) =>
+    sub.getPoints().map((p) => toMm(p.x, p.y)),
+  )
+  const left = outline!
+  const leftHoles = holes
+  const build = (outline: THREE.Vector2[], inner: THREE.Vector2[][]) => {
+    const result = new THREE.Shape(outline)
+    result.holes = inner.map((hole) => new THREE.Path(hole))
+    return result
+  }
+  return [build(left, leftHoles), build(mirrorX(left), leftHoles.map(mirrorX))]
+}
+
 /** Curvatura del frente: cuanto más lejos del puente, más atrás. */
 function wrap(geometry: THREE.BufferGeometry) {
   const position = geometry.getAttribute('position')
@@ -108,16 +139,16 @@ function uvInTiles(geometry: THREE.BufferGeometry) {
 }
 
 /** Pieza de acetato: una forma plana extruida hacia atrás, con el frente en z = 0. */
-function acetatePiece(shape: THREE.Shape) {
+function acetatePiece(shape: THREE.Shape, depth = ACETATE_DEPTH_MM) {
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: ACETATE_DEPTH_MM - 2 * BEVEL_MM,
+    depth: depth - 2 * BEVEL_MM,
     bevelEnabled: true,
     bevelThickness: BEVEL_MM,
     bevelSize: BEVEL_MM,
     bevelSegments: 2,
     curveSegments: 4,
   })
-  geometry.translate(0, 0, -(ACETATE_DEPTH_MM - BEVEL_MM))
+  geometry.translate(0, 0, -(depth - BEVEL_MM))
   return wrap(uvInTiles(geometry))
 }
 
@@ -237,11 +268,7 @@ function frameMaterial(style: GlassesStyle) {
       roughness: 0.28,
     })
   }
-  const material = new THREE.MeshPhysicalMaterial({
-    roughness: 0.32,
-    clearcoat: 1,
-    clearcoatRoughness: 0.12,
-  })
+  const material = new THREE.MeshPhysicalMaterial(FINISH[style.finish ?? 'brillante'])
   if (style.frameColor === 'carey') {
     const map = new THREE.CanvasTexture(careyCanvas())
     map.colorSpace = THREE.SRGBColorSpace
@@ -272,10 +299,11 @@ function lensMaterial(style: GlassesStyle) {
 }
 
 export function buildGlasses(style: GlassesStyle): BuiltGlasses {
-  const g = FRAME_GEOMETRY[style.shape]
+  const g = geometryFor(style)
   const { lensWidth, bridge, lensHeight, templeLength } = style.size
   const rim = RIM_MM[style.material]
   const isMetal = style.material === 'metal'
+  const depth = style.frame?.frontDepth ?? ACETATE_DEPTH_MM
   const lensCenterY = -lensHeight * PUPIL_ABOVE_LENS_CENTER
 
   // Del sistema del dibujo (viewBox, y hacia abajo) a mm del armazón (y hacia arriba).
@@ -298,57 +326,73 @@ export function buildGlasses(style: GlassesStyle): BuiltGlasses {
   const left = lensContour(g.lens, toMm)
   const contours = [left, mirrorX(left)]
 
-  // Aros y cristales.
-  for (const contour of contours) {
-    if (isMetal) add(wire(contour, rim / 2, true), frame)
-    else {
-      const shape = new THREE.Shape(offsetCurve(contour, rim / 2 - BEVEL_MM, true))
-      shape.holes.push(new THREE.Path(offsetCurve(contour, -rim / 2 + BEVEL_MM, true)))
-      add(acetatePiece(shape), frame)
+  // Frente: el trazado de la foto, o aros, puente y laterales generados.
+  if (g.front) {
+    for (const half of frontShapes(g.front, toMm)) add(acetatePiece(half, depth), frame)
+  } else {
+    for (const contour of contours) {
+      if (isMetal) add(wire(contour, rim / 2, true), frame)
+      else {
+        const shape = new THREE.Shape(offsetCurve(contour, rim / 2 - BEVEL_MM, true))
+        shape.holes.push(new THREE.Path(offsetCurve(contour, -rim / 2 + BEVEL_MM, true)))
+        add(acetatePiece(shape), frame)
+      }
     }
-    // El borde va metido en el aro; el centro, abombado, queda casi al ras del frente.
-    const lens = add(lensGeometry(contour, isMetal ? -rim : -ACETATE_DEPTH_MM * 0.65), glass)
+
+    // Puente: la misma curva que el dibujo 2D, de un aro al otro.
+    const innerTop = toMm(g.inner, g.top + (g.bottom - g.top) * 0.28)
+    const bridgeTop = innerTop.y + lensHeight * 0.14
+    const halfBridge = new THREE.QuadraticBezierCurve(
+      innerTop,
+      v2(-bridge / 4, bridgeTop),
+      v2(0, bridgeTop),
+    ).getPoints(12)
+    const bridgeLine = [...halfBridge, ...mirrorX(halfBridge).slice(1)]
+    if (isMetal) add(wire(bridgeLine, rim / 2), frame)
+    else add(acetatePiece(band(bridgeLine, rim)), frame)
+
+    if (style.shape === 'aviador') {
+      // Barra doble del aviador.
+      const barY = lensHeight * (0.47 - PUPIL_ABOVE_LENS_CENTER)
+      const halfBar = [v2(-bridge / 2 - 3, barY), v2(0, barY + 0.4)]
+      add(wire([...halfBar, v2(bridge / 2 + 3, barY)], rim / 2), frame)
+    }
+  }
+
+  // Cristales: el borde va metido en el aro; el centro, abombado, queda casi al ras del frente.
+  for (const contour of contours) {
+    const lens = add(lensGeometry(contour, isMetal && !g.front ? -rim : -depth * 0.65), glass)
     lens.renderOrder = 2
   }
 
-  // Puente: la misma curva que el dibujo 2D, de un aro al otro.
-  const innerTop = toMm(g.inner, g.top + (g.bottom - g.top) * 0.28)
-  const bridgeTop = innerTop.y + lensHeight * 0.14
-  const halfBridge = new THREE.QuadraticBezierCurve(
-    innerTop,
-    v2(-bridge / 4, bridgeTop),
-    v2(0, bridgeTop),
-  ).getPoints(12)
-  const bridgeLine = [...halfBridge, ...mirrorX(halfBridge).slice(1)]
-  if (isMetal) add(wire(bridgeLine, rim / 2), frame)
-  else add(acetatePiece(band(bridgeLine, rim)), frame)
-
-  if (style.shape === 'aviador') {
-    // Barra doble del aviador.
-    const barY = lensHeight * (0.47 - PUPIL_ABOVE_LENS_CENTER)
-    const halfBar = [v2(-bridge / 2 - 3, barY), v2(0, barY + 0.4)]
-    add(wire([...halfBar, v2(bridge / 2 + 3, barY)], rim / 2), frame)
-  }
-
-  // Laterales (donde arranca la patilla) y patillas.
+  // Patillas. En el frente trazado arrancan del borde exterior, con su sección medida; en el
+  // generado, de un lateral corto.
   const [templeX, templeY] = startPoint(g.temple)
   const templeStart = toMm(templeX, templeY)
-  const stubEnd = v2(templeStart.x - TEMPLE_STUB_MM, templeStart.y + 0.4)
-  const { thickness, height } = TEMPLE_SECTION[style.material]
-  const templeGeo = templeGeometry(templeLength, thickness, Math.min(height, rim * 1.4))
+  const stubEnd = g.front ? templeStart : v2(templeStart.x - TEMPLE_STUB_MM, templeStart.y + 0.4)
+  const { thickness, height } = style.frame
+    ? { thickness: style.frame.templeThickness, height: style.frame.templeHeight }
+    : TEMPLE_SECTION[style.material]
+  const templeGeo = templeGeometry(
+    templeLength,
+    thickness,
+    style.frame ? height : Math.min(height, rim * 1.4),
+  )
   geometries.push(templeGeo)
   const temples: Temple[] = []
 
   const leftStub = [v2(templeStart.x + 1, templeStart.y), stubEnd]
   for (const side of [-1, 1] as const) {
-    const stub = side === -1 ? leftStub : mirrorX(leftStub)
-    if (isMetal) add(wire(stub, rim / 2), frame)
-    else add(acetatePiece(band(stub, rim * 1.4)), frame)
+    if (!g.front) {
+      const stub = side === -1 ? leftStub : mirrorX(leftStub)
+      if (isMetal) add(wire(stub, rim / 2), frame)
+      else add(acetatePiece(band(stub, rim * 1.4)), frame)
+    }
 
     // La bisagra queda detrás del lateral, con la patilla por dentro del borde exterior.
     const hingeX = -stubEnd.x - thickness / 2
     const pivot = new THREE.Group()
-    pivot.position.set(side * hingeX, stubEnd.y, wrapZ(stubEnd.x) - ACETATE_DEPTH_MM + 0.5)
+    pivot.position.set(side * hingeX, stubEnd.y, wrapZ(stubEnd.x) - depth + 0.5)
     pivot.add(new THREE.Mesh(templeGeo, frame))
     group.add(pivot)
     temples.push({ pivot, side, hingeX, thickness })

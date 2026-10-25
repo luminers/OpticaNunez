@@ -11,6 +11,8 @@ import {
   STORE_PERKS,
   WIDTH_LABELS,
 } from '@/data/catalog-labels'
+import { STORE_INFO, whatsappUrl } from '@/data/store-info'
+import { canTryOn } from '@/data/try-on'
 import { getProduct, getRelated } from '@/services/catalog'
 import { useFavoritesStore } from '@/stores/favorites'
 import type { FaceWidth, FilterKey, Product } from '@/types/catalog'
@@ -71,6 +73,9 @@ watch([variantId, width], ([color, ancho]) => {
 const variant = computed(
   () => product.value?.variants.find((v) => v.id === variantId.value) ?? product.value?.variants[0],
 )
+const showTryOn = computed(
+  () => !!product.value && !!variant.value && canTryOn(product.value, variant.value),
+)
 const size = computed(
   () => product.value?.sizes.find((s) => s.width === width.value) ?? product.value?.sizes[0],
 )
@@ -79,8 +84,9 @@ const isFavorite = computed(() => !!product.value && favorites.isFavorite(produc
 const stamp = computed(() =>
   size.value ? `${size.value.lensWidth} □ ${size.value.bridge} ${size.value.templeLength}` : '',
 )
+// Medido con calibre si está cargado; si no, se estima con dos lentes, puente y laterales.
 const frameWidth = computed(() =>
-  size.value ? size.value.lensWidth * 2 + size.value.bridge + 10 : 0,
+  size.value ? (size.value.frontWidth ?? size.value.lensWidth * 2 + size.value.bridge + 10) : 0,
 )
 
 function optionLabel(key: FilterKey, value: string) {
@@ -93,6 +99,12 @@ const buyLink = computed(() => ({
   params: { slug: props.slug },
   query: linkQuery.value,
 }))
+// La consulta llega con el modelo, color y ancho para que en el local no tengan que preguntar.
+const askLink = computed(() => {
+  if (!product.value || !variant.value) return null
+  const text = `Hola, tengo una consulta sobre el modelo ${product.value.name} en ${variant.value.colorName.toLowerCase()}${size.value ? `, ancho ${WIDTH_LABELS[size.value.width].toLowerCase()}` : ''}.`
+  return whatsappUrl(text) ?? (import.meta.env.DEV ? '#' : null)
+})
 const tryOnLink = computed(() => ({
   name: 'probador',
   params: { slug: props.slug },
@@ -200,6 +212,7 @@ onBeforeUnmount(() => {
                   v-else
                   :view="slide.view === 'perfil' ? 'perfil' : 'frente'"
                   :shape="product.shape"
+                  :frame="product.frame"
                   :material="product.material"
                   :frame-color="variant.frameColor"
                   :lens-tint="variant.lensTint"
@@ -214,7 +227,7 @@ onBeforeUnmount(() => {
                 </svg>
               </button>
             </li>
-            <li v-if="variant.tryOnModelUrl">
+            <li v-if="showTryOn">
               <RouterLink :to="tryOnLink" class="thumb thumb-try">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -239,7 +252,7 @@ onBeforeUnmount(() => {
                   <path d="m4 15 11-11 5 5-11 11zM8 11l2 2M11 8l2 2" />
                 </svg>
               </button>
-              <RouterLink v-if="variant.tryOnModelUrl" :to="tryOnLink" class="try-on">
+              <RouterLink v-if="showTryOn" :to="tryOnLink" class="try-on">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"
@@ -266,6 +279,7 @@ onBeforeUnmount(() => {
                   v-else
                   :view="slide.view"
                   :shape="product.shape"
+                  :frame="product.frame"
                   :material="product.material"
                   :frame-color="variant.frameColor"
                   :lens-tint="variant.lensTint"
@@ -378,6 +392,14 @@ onBeforeUnmount(() => {
             </ul>
           </div>
 
+          <p v-if="askLink" class="ask">
+            ¿Dudas con el ancho o con tu receta?
+            <a :href="askLink" target="_blank" rel="noopener">Consultá por WhatsApp</a>
+            <template v-if="STORE_INFO.optician">
+              y te responde {{ STORE_INFO.optician }}, el óptico del local.</template
+            >
+          </p>
+
           <div class="details">
             <details open>
               <summary>
@@ -404,7 +426,7 @@ onBeforeUnmount(() => {
                   <dd>{{ size.lensHeight }} mm</dd>
                 </div>
                 <div>
-                  <dt>Ancho total aproximado</dt>
+                  <dt>{{ size.frontWidth ? 'Ancho total' : 'Ancho total aproximado' }}</dt>
                   <dd>{{ frameWidth }} mm</dd>
                 </div>
               </dl>
@@ -869,7 +891,7 @@ onBeforeUnmount(() => {
 }
 
 .buy:hover {
-  background: #2c3d3b;
+  background: #3a3f5e;
 }
 
 .perks {
@@ -902,6 +924,16 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin: 0;
   padding-left: 18px;
+}
+
+.ask {
+  color: var(--color-ink-soft);
+}
+
+.ask a {
+  color: var(--color-ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
 }
 
 .details details {

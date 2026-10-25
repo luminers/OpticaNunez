@@ -5,7 +5,9 @@ import type {
   Category,
   ColorFamily,
   FaceWidth,
+  FrameFinish,
   FrameMaterial,
+  FrameModel,
   FrameShape,
   Gender,
   Product,
@@ -29,6 +31,8 @@ interface ProductRow {
   badges: Badge[]
   featured_rank: number
   created_at: string
+  // jsonb con la forma trazada y las medidas del armazón real (tipo FrameModel).
+  frame_model: FrameModel | null
   product_variants: {
     sku: string
     color_name: string
@@ -37,6 +41,7 @@ interface ProductRow {
     lens_tint: string | null
     images: string[]
     try_on_model_url: string | null
+    finish: FrameFinish | null
     position: number
   }[]
   product_sizes: {
@@ -46,6 +51,7 @@ interface ProductRow {
     temple_length: number
     // numeric de Postgres llega como texto.
     lens_height: number | string
+    front_width: number | string | null
   }[]
 }
 
@@ -62,6 +68,7 @@ function toProduct(row: ProductRow): Product {
     badges: row.badges,
     featuredRank: row.featured_rank,
     createdAt: row.created_at,
+    frame: row.frame_model ?? undefined,
     variants: [...row.product_variants]
       .sort((a, b) => a.position - b.position)
       .map((v) => ({
@@ -72,6 +79,7 @@ function toProduct(row: ProductRow): Product {
         lensTint: v.lens_tint ?? undefined,
         images: v.images,
         tryOnModelUrl: v.try_on_model_url ?? undefined,
+        finish: v.finish ?? undefined,
       })),
     sizes: [...row.product_sizes]
       .sort((a, b) => WIDTH_ORDER.indexOf(a.width) - WIDTH_ORDER.indexOf(b.width))
@@ -81,6 +89,7 @@ function toProduct(row: ProductRow): Product {
         bridge: s.bridge,
         templeLength: s.temple_length,
         lensHeight: Number(s.lens_height),
+        frontWidth: s.front_width == null ? undefined : Number(s.front_width),
       })),
   }
 }

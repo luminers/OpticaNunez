@@ -258,7 +258,14 @@ export function fitVerdict(frameWidthMm: number, faceWidthMm: number): FitVerdic
   return 'justo'
 }
 
-/** Ancho total del frente: dos lentes, el puente y los dos laterales (~5 mm cada uno). */
-export function frameTotalWidthMm(size: { lensWidth: number; bridge: number }) {
-  return size.lensWidth * 2 + size.bridge + 10
+/**
+ * Ancho total del frente: el medido con calibre si está; si no, dos lentes, el puente y los
+ * dos laterales (~5 mm cada uno).
+ */
+export function frameTotalWidthMm(size: {
+  lensWidth: number
+  bridge: number
+  frontWidth?: number
+}) {
+  return size.frontWidth ?? size.lensWidth * 2 + size.bridge + 10
 }

@@ -98,6 +98,8 @@ watch(
             material: p.material,
             frameColor: v.frameColor,
             lensTint: v.lensTint,
+            finish: v.finish,
+            frame: p.frame,
             size: s,
           }
         : null
@@ -230,7 +232,7 @@ onBeforeUnmount(() => {
 // Armazón 3D (en evaluación): por ahora solo en estos modelos. `?motor=2d` o `?motor=3d`
 // fuerza uno u otro para comparar. Three.js se descarga recién al activar la cámara, y si el
 // dispositivo no tiene WebGL se sigue con el dibujo 2D.
-const TRYON_3D_SLUGS = new Set(['palermo'])
+const TRYON_3D_SLUGS = new Set(['palermo', 'musgo'])
 const use3d = computed(
   () =>
     route.query.motor === '3d' || (route.query.motor !== '2d' && TRYON_3D_SLUGS.has(props.slug)),
@@ -403,6 +405,7 @@ function savePhoto() {
             class="intro-frame"
             view="medidas"
             :shape="product.shape"
+            :frame="product.frame"
             :material="product.material"
             :frame-color="variant.frameColor"
             :lens-tint="variant.lensTint"
@@ -547,6 +550,7 @@ function savePhoto() {
             <button type="button" class="other" @click="tryOther(other)">
               <FrameIllustration
                 :shape="other.shape"
+                :frame="other.frame"
                 :material="other.material"
                 :frame-color="other.variants[0]!.frameColor"
                 :lens-tint="other.variants[0]!.lensTint"
@@ -707,7 +711,7 @@ function savePhoto() {
   max-width: calc(100% - 32px);
   padding: 9px 18px;
   border-radius: var(--radius-pill);
-  background: rgb(29 43 42 / 0.82);
+  background: rgb(42 46 72 / 0.82);
   color: #ffffff;
   font-weight: 600;
   text-align: center;

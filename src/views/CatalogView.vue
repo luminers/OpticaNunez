@@ -485,7 +485,7 @@ function onSortChange(event: Event) {
     position: fixed;
     inset: 0;
     z-index: 30;
-    background: rgb(29 43 42 / 0.4);
+    background: rgb(42 46 72 / 0.4);
   }
 
   .toggle-filters {

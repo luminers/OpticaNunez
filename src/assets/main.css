@@ -1,11 +1,11 @@
 :root {
   --color-paper: #ffffff;
-  --color-tile: #eef1ee;
-  --color-ink: #1d2b2a;
-  --color-ink-soft: #56625f;
-  --color-line: #d9dfdb;
-  --color-accent: #1f5c4e;
-  --color-accent-strong: #174a3f;
+  --color-tile: #eef3f9;
+  --color-ink: #2a2e48;
+  --color-ink-soft: #595f78;
+  --color-line: #d8dee9;
+  --color-accent: #2768b8;
+  --color-accent-strong: #1a3c9e;
   --color-on-accent: #ffffff;
 
   --font-display: 'Forum', Georgia, serif;

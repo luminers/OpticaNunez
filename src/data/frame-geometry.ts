@@ -9,6 +9,11 @@ import type { FrameShape } from '@/types/catalog'
  */
 export interface FrameGeometry {
   lens: string
+  /**
+   * Mitad izquierda del frente completo, con el lente como agujero: solo en armazones
+   * trazados de una foto. Si está, se rellena en lugar de dibujar aro, puente y patilla.
+   */
+  front?: string
   bridge: string
   temple: string
   outer: number
@@ -63,4 +68,9 @@ export const FRAME_GEOMETRY: Record<FrameShape, FrameGeometry> = {
     top: 22,
     bottom: 82,
   },
+}
+
+/** La forma trazada de la foto si el producto la tiene; si no, la genérica de su forma. */
+export function geometryFor(frame: { shape: FrameShape; frame?: { geometry: FrameGeometry } }) {
+  return frame.frame?.geometry ?? FRAME_GEOMETRY[frame.shape]
 }

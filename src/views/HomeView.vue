@@ -4,7 +4,9 @@ import FrameBlueprint from '@/components/home/FrameBlueprint.vue'
 import TryOnIllustration from '@/components/home/TryOnIllustration.vue'
 import FrameIllustration from '@/components/catalog/FrameIllustration.vue'
 import ProductCard from '@/components/catalog/ProductCard.vue'
+import StoreCard from '@/components/home/StoreCard.vue'
 import { CATEGORY_INFO } from '@/data/catalog-labels'
+import { STORE_INFO } from '@/data/store-info'
 import { getCatalog, getFeatured } from '@/services/catalog'
 import type { Category, Product } from '@/types/catalog'
 
@@ -133,6 +135,7 @@ const SERVICES = [
           <FrameIllustration
             v-if="item.cover && item.variant"
             :shape="item.cover.shape"
+            :frame="item.cover.frame"
             :material="item.cover.material"
             :frame-color="item.variant.frameColor"
             :lens-tint="item.variant.lensTint"
@@ -192,6 +195,23 @@ const SERVICES = [
       <RouterLink :to="CATEGORY_INFO[featuredCategory].path" class="pill pill-outline see-all">
         Ver todos los {{ CATEGORY_INFO[featuredCategory].title.toLowerCase() }}
       </RouterLink>
+    </section>
+
+    <section class="about" aria-labelledby="about-title">
+      <div class="about-text">
+        <h2 id="about-title">Detrás de la tienda hay un local de barrio</h2>
+        <p>
+          {{
+            STORE_INFO.since
+              ? `Atendemos en el mismo mostrador desde ${STORE_INFO.since}.`
+              : 'Atendemos en el mismo mostrador de siempre.'
+          }}
+          Los anteojos que comprás acá los arma nuestro taller y los revisa el óptico responsable
+          antes de entregarlos.
+        </p>
+        <p>Si tenés una duda sobre tu receta o sobre qué armazón te queda, preguntanos.</p>
+      </div>
+      <StoreCard class="about-card" />
     </section>
 
     <section class="services" aria-labelledby="services-title">
@@ -269,7 +289,7 @@ h1 {
 }
 
 .pill-solid:hover {
-  background: #000;
+  background: #1b1e33;
 }
 
 .pill-outline {
@@ -537,6 +557,39 @@ h1 {
 
 .see-all {
   justify-self: center;
+}
+
+/* La óptica */
+
+.about {
+  display: grid;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .about {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(40px, 6vw, 96px);
+  }
+}
+
+.about-text {
+  display: grid;
+  gap: 16px;
+}
+
+.about h2 {
+  max-width: 14ch;
+  margin-bottom: 4px;
+  font-size: var(--step-3);
+}
+
+.about p {
+  max-width: 46ch;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--color-ink-soft);
 }
 
 /* Servicios */

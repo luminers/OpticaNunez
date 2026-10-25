@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useFavoritesStore } from '@/stores/favorites'
 import { BADGE_LABELS } from '@/data/catalog-labels'
+import { canTryOn } from '@/data/try-on'
 import { formatPrice } from '@/utils/format'
 import type { Product } from '@/types/catalog'
 import ColorSwatches from './ColorSwatches.vue'
@@ -33,6 +34,7 @@ watch(
 const variant = computed(
   () => props.product.variants.find((v) => v.id === selectedId.value) ?? props.product.variants[0]!,
 )
+const showTryOn = computed(() => canTryOn(props.product, variant.value))
 const isFavorite = computed(() => favorites.isFavorite(props.product.id))
 const productLink = computed(() => ({
   name: 'producto',
@@ -61,6 +63,7 @@ const tryOnLink = computed(() => ({
           v-else
           class="illustration"
           :shape="product.shape"
+          :frame="product.frame"
           :material="product.material"
           :frame-color="variant.frameColor"
           :lens-tint="variant.lensTint"
@@ -87,7 +90,7 @@ const tryOnLink = computed(() => ({
 
       <p v-if="product.badges[0]" class="badge">{{ BADGE_LABELS[product.badges[0]] }}</p>
 
-      <RouterLink v-if="variant.tryOnModelUrl" :to="tryOnLink" class="try-on">
+      <RouterLink v-if="showTryOn" :to="tryOnLink" class="try-on">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"
